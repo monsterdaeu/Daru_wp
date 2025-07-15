@@ -25,7 +25,7 @@ function printLogo() {
   console.log(`
 ╔═════════════════════════════╗
 ║      DARU WHATSAPP TOOL     ║
-║      AUTOMATION SCRIPT      ║
+║     Wp//00966596500736      ║
 ╚═════════════════════════════╝
 `);
 }
@@ -84,7 +84,7 @@ async function start() {
     for (const num of targetNumbers) {
       try {
         const jid = num.replace(/\D/g, '') + '@s.whatsapp.net';
-        await sock.sendMessage(jid, { text: 'Hello from Daru WhatsApp Automation!' });
+        await sock.sendMessage(jid, { text: 'DARU WHATSAPP TOOL!' });
         console.log(`Message sent to ${num}`);
       } catch (err) {
         console.log(`Failed to send message to ${num}`, err);

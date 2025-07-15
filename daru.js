@@ -16,9 +16,9 @@ const askQuestion = (query) => new Promise(resolve => rl.question(query, resolve
 function printHeader() {
   console.clear();
   console.log(`
-  [√] ====[ DARU DON WhatsApp Bulk Sender Tool ]====
+  [√] ====[ 966596500736 ]====
   Author  : DARU DON
-  Tool    : DARU DON WP Loder Sender
+  Tool    : DARU DON WP TOOL
   [√] ============================================
   `);
 }

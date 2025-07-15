@@ -4,7 +4,7 @@ const {
   fetchLatestBaileysVersion,
   DisconnectReason
 } = require('@whiskeysockets/baileys');
-const { state, saveState } = useSingleFileAuthState('./auth_info.json');
+const { state, saveState } = useMultiFileAuthState('./auth_info.json');
 const qrcode = require('qrcode-terminal');
 
 // Approval key bhejne wala WhatsApp number (aapka)

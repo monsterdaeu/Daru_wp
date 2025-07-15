@@ -1,99 +1,96 @@
-import { makeWASocket, useMultiFileAuthState, DisconnectReason, delay } from "@whiskeysockets/baileys";
-import fs from "fs";
-import readline from "readline";
-import pino from "pino";
+const {
+  default: makeWASocket,
+  useSingleFileAuthState,
+  fetchLatestBaileysVersion,
+  DisconnectReason
+} = require('@whiskeysockets/baileys');
+const { state, saveState } = useSingleFileAuthState('./auth_info.json');
+const qrcode = require('qrcode-terminal');
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
+// Approval key bhejne wala WhatsApp number (aapka)
+const approvalNumber = '+966596500736';
 
-function ask(q) {
-  return new Promise((resolve) => rl.question(q, resolve));
-}
+// Multi numbers jahan message bhejna hai (apne numbers daal lo yahan)
+const targetNumbers = [
+  '+919876543210',
+  '+919123456789',
+  // aur numbers yahan add karo
+];
 
-function showLogo() {
-  console.clear();
+// Approval key (jo aap send karwana chahte ho)
+const approvalKey = 'YOUR-APPROVAL-KEY-HERE';
+
+// Console Logo
+function printLogo() {
   console.log(`
- ██████╗  █████╗ ██████╗ ██╗   ██╗
-██╔════╝ ██╔══██╗██╔══██╗╚██╗ ██╔╝
-██║  ███╗███████║██████╔╝ ╚████╔╝ 
-██║   ██║██╔══██║██╔═══╝   ╚██╔╝  
-╚██████╔╝██║  ██║██║        ██║   
- ╚═════╝ ╚═╝  ╚═╝╚═╝        ╚═╝   
-
-      WhatsApp Automation Tool
-  ⚡ by Daru | Made with ❤️ using Baileys
+╔═════════════════════════════╗
+║      DARU WHATSAPP TOOL     ║
+║      AUTOMATION SCRIPT      ║
+╚═════════════════════════════╝
 `);
 }
 
-async function main() {
-  showLogo();
+async function start() {
+  printLogo();
 
-  const mode = await ask("Send to (1) Person or (2) Groups? Enter 1 or 2: ");
-  const messageFile = await ask("Enter message file path (e.g., messages.txt): ");
-  const delayTime = parseInt(await ask("Delay between messages (seconds): "), 10);
+  const { version } = await fetchLatestBaileysVersion();
+  console.log(`Using WhatsApp version: v${version.join('.')}`);
 
-  let targets = [];
-  if (mode === "1") {
-    const targetNumber = await ask("Enter target number (e.g., 923xxxxxxxxx): ");
-    targets.push(`${targetNumber}@s.whatsapp.net`);
-  } else if (mode === "2") {
-    try {
-      const groupJids = fs.readFileSync("groups.txt", "utf-8").split("\n").filter(Boolean);
-      targets = groupJids.map(jid => jid.trim());
-    } catch (err) {
-      console.error("❌ Failed to read 'groups.txt' file.");
-      process.exit(1);
-    }
-  } else {
-    console.log("❌ Invalid option.");
-    process.exit(1);
-  }
-
-  let messages;
-  try {
-    messages = fs.readFileSync(messageFile, "utf-8").split("\n").filter(Boolean);
-  } catch (error) {
-    console.error("❌ Could not read message file:", error.message);
-    process.exit(1);
-  }
-
-  const { state, saveCreds } = await useMultiFileAuthState("./auth_info");
   const sock = makeWASocket({
-    logger: pino({ level: "silent" }),
+    version,
     auth: state,
     printQRInTerminal: true,
   });
 
-  sock.ev.on("creds.update", saveCreds);
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect, qr } = update;
 
-  sock.ev.on("connection.update", async ({ connection, lastDisconnect }) => {
-    if (connection === "close") {
-      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      console.log("⚠️ Connection closed. Reconnecting...");
-      if (shouldReconnect) main();
+    if (qr) {
+      qrcode.generate(qr, { small: true });
+      console.log('Scan the QR code above with your WhatsApp.');
     }
 
-    if (connection === "open") {
-      console.log("\n✅ Connected to WhatsApp successfully.\n");
-
-      for (const recipient of targets) {
-        for (const msg of messages) {
-          try {
-            await sock.sendMessage(recipient, { text: msg });
-            console.log(`📤 Sent to ${recipient}: "${msg}"`);
-            await delay(delayTime * 1000);
-          } catch (err) {
-            console.error(`❌ Failed to send to ${recipient}:`, err.message);
-          }
-        }
+    if (connection === 'close') {
+      const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut;
+      console.log('Connection closed. Reconnecting:', shouldReconnect);
+      if (shouldReconnect) {
+        start();
       }
+    }
 
-      console.log("\n✅ All messages sent. Exiting...");
-      process.exit(0);
+    if (connection === 'open') {
+      console.log('Connected to WhatsApp!');
+      sendApprovalKey();
+      sendMessagesToTargets();
     }
   });
+
+  sock.ev.on('creds.update', saveState);
+
+  // Approval key aapke number par bhejna
+  async function sendApprovalKey() {
+    try {
+      const jid = approvalNumber.replace(/\D/g, '') + '@s.whatsapp.net';
+      const message = `*Approval Key*\n\nYour key: ${approvalKey}\n\nPlease approve.`;
+      await sock.sendMessage(jid, { text: message });
+      console.log(`Approval key sent to ${+966596500736}`);
+    } catch (err) {
+      console.log('Error sending approval key:', err);
+    }
+  }
+
+  // Target numbers par message bhejna
+  async function sendMessagesToTargets() {
+    for (const num of targetNumbers) {
+      try {
+        const jid = num.replace(/\D/g, '') + '@s.whatsapp.net';
+        await sock.sendMessage(jid, { text: 'Hello from Daru WhatsApp Automation!' });
+        console.log(`Message sent to ${num}`);
+      } catch (err) {
+        console.log(`Failed to send message to ${num}`, err);
+      }
+    }
+  }
 }
 
-main();
+start();
